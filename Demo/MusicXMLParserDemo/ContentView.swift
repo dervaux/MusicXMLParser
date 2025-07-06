@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var selectedFileURL: URL?
     @State private var selectedFileName: String = "No file selected"
     @State private var barCount: Int?
+    @State private var playedBeats: Double?
+    @State private var selectedNoteType: NoteType = .quarterNote
     @State private var errorMessage: String?
     @State private var isProcessing: Bool = false
 
@@ -91,6 +93,37 @@ struct ContentView: View {
                             isProcessing: isProcessing,
                             error: errorMessage
                         )
+
+                        Divider()
+
+                        // Beat Count Operation
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("Beat Count Reference:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Spacer()
+
+                                Picker("Note Type", selection: $selectedNoteType) {
+                                    ForEach(NoteType.allCases, id: \.self) { noteType in
+                                        Text(noteType.rawValue.capitalized)
+                                            .tag(noteType)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 120)
+                            }
+
+                            OperationResultView(
+                                title: "Played Beats",
+                                description: "Total played beats (excluding silences) using \(selectedNoteType.rawValue) note reference",
+                                icon: "metronome",
+                                result: playedBeats.map { String(format: "%.1f beats", $0) },
+                                isProcessing: isProcessing,
+                                error: errorMessage
+                            )
+                        }
                     }
                     .padding()
                     .background(Color(NSColor.controlBackgroundColor))
@@ -110,6 +143,11 @@ struct ContentView: View {
         .frame(minWidth: 600, minHeight: 500)
         .onChange(of: selectedFileURL) { _, newURL in
             if let url = newURL {
+                analyzeFile(url)
+            }
+        }
+        .onChange(of: selectedNoteType) { _, _ in
+            if let url = selectedFileURL {
                 analyzeFile(url)
             }
         }
@@ -152,15 +190,18 @@ struct ContentView: View {
     private func analyzeFile(_ url: URL) {
         // Reset previous results
         barCount = nil
+        playedBeats = nil
         errorMessage = nil
         isProcessing = true
 
         Task {
             do {
                 let count = try parser.countBars(in: url)
+                let beats = try parser.countPlayedBeats(in: url, referenceNoteType: selectedNoteType)
 
                 await MainActor.run {
                     barCount = count
+                    playedBeats = beats
                     isProcessing = false
                 }
             } catch {

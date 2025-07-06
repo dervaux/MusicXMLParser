@@ -30,8 +30,9 @@ This is a macOS demo application that showcases the functionality of the MusicXM
 The demo includes a sample MusicXML file (`sample.musicxml`) with:
 - 5 measures of simple piano music
 - Various note types (whole, half, quarter notes)
-- A rest in the final measure
+- A rest in the final measure (excluded from beat counting)
 - Proper MusicXML 3.1 formatting
+- Perfect for testing both bar and beat counting functionality
 
 ## Requirements
 
@@ -41,10 +42,9 @@ The demo includes a sample MusicXML file (`sample.musicxml`) with:
 
 ## Package Operations Demonstrated
 
-Currently, the demo showcases:
+The demo showcases:
 - **Bar Counting**: `countBars(in: URL)` - Counts measures in MusicXML files
-
-As the MusicXMLParser package grows with additional functionality, this demo will be updated to showcase new operations.
+- **Beat Counting**: `countPlayedBeats(in: URL, referenceNoteType: NoteType)` - Counts played beats excluding silences with selectable note type reference
 
 ## Architecture
 
