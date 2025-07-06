@@ -28,5 +28,6 @@ let barCount = try parser.countBars(in: xmlString)
 
 ## Available Functions
 
-- `countBars(in fileURL: URL) throws -> Int` - Count the number of bars in a MusicXML file
-- `countBars(in xmlString: String) throws -> Int` - Count the number of bars in a MusicXML string
+The functions below accept parameters that can be either a URL (for file-based input) or a String (for direct XML content).
+
+- `countBars` - Count the number of bars
