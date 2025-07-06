@@ -112,7 +112,7 @@ struct ContentView: View {
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .frame(width: 120)
+                                .frame(width: 250)
                             }
 
                             OperationResultView(
