@@ -17,9 +17,15 @@ struct ContentView: View {
     @State private var selectedNoteType: NoteType = .quarterNote
     @State private var errorMessage: String?
     @State private var isProcessing: Bool = false
+    @State private var modifiedXMLWithAccidentals: String?
+    @State private var showingAccidentalXML: Bool = false
+    @State private var isShowingModifiedVersion: Bool = false
+    @State private var isTransitioningSheetMusic: Bool = false
+    @State private var sheetMusicViewKey: UUID = UUID()
 
     // SheetMusicView state
     @State private var musicXMLContent: String = ""
+    @State private var originalXMLContent: String = ""
     @State private var transposeSteps: Int = 0
     @State private var sheetMusicError: String?
 
@@ -86,9 +92,17 @@ struct ContentView: View {
             if selectedFileURL != nil {
                 VStack(spacing: 16) {
                     HStack {
-                        Text("Sheet Music Preview")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Sheet Music Preview")
+                                .font(.headline)
+
+                            if isShowingModifiedVersion {
+                                Text("Showing version with explicit accidentals")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         // Transpose controls
                         HStack(spacing: 8) {
@@ -121,14 +135,21 @@ struct ContentView: View {
                             }
                             .buttonStyle(.bordered)
                             .disabled(transposeSteps == 0)
+
+                            if isShowingModifiedVersion {
+                                Button("Show Original") {
+                                    revertToOriginalSheetMusic()
+                                }
+                                .buttonStyle(.bordered)
+                            }
                         }
                     }
 
                     // SheetMusicView
-                    if musicXMLContent.isEmpty {
+                    if musicXMLContent.isEmpty || isTransitioningSheetMusic {
                         VStack(spacing: 12) {
-                            ProgressView("Loading sheet music...")
-                            Text("Rendering musical notation...")
+                            ProgressView(isTransitioningSheetMusic ? "Updating sheet music..." : "Loading sheet music...")
+                            Text(isTransitioningSheetMusic ? "Applying changes..." : "Rendering musical notation...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -168,6 +189,7 @@ struct ContentView: View {
                         .frame(height: 300)
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(8)
+                        .id(sheetMusicViewKey) // Force recreation when key changes
                     }
                 }
             }
@@ -220,6 +242,37 @@ struct ContentView: View {
                                 error: errorMessage
                             )
                         }
+
+                        Divider()
+
+                        // Accidental Processing Operation
+                        VStack(spacing: 8) {
+                            OperationResultView(
+                                title: "Add Explicit Accidentals",
+                                description: "Generate MusicXML with explicit accidentals based on key signature",
+                                icon: "music.note.house",
+                                result: modifiedXMLWithAccidentals != nil ? "XML Generated" : nil,
+                                isProcessing: isProcessing,
+                                error: errorMessage
+                            )
+
+                            if modifiedXMLWithAccidentals != nil {
+                                HStack {
+                                    Spacer()
+
+                                    Button("Preview with Accidentals") {
+                                        updateSheetMusicWithAccidentals()
+                                    }
+                                    .buttonStyle(.borderedProminent)
+
+                                    Button("View XML") {
+                                        showingAccidentalXML = true
+                                    }
+                                    .buttonStyle(.bordered)
+
+                                }
+                            }
+                        }
                     }
                     .padding()
                     .background(Color(NSColor.controlBackgroundColor))
@@ -246,6 +299,9 @@ struct ContentView: View {
             if let url = selectedFileURL {
                 analyzeFile(url)
             }
+        }
+        .sheet(isPresented: $showingAccidentalXML) {
+            XMLViewerSheet(xmlContent: modifiedXMLWithAccidentals ?? "")
         }
     }
 
@@ -287,13 +343,18 @@ struct ContentView: View {
         // Reset previous results
         barCount = nil
         playedBeats = nil
+        modifiedXMLWithAccidentals = nil
         errorMessage = nil
         isProcessing = true
 
         // Reset sheet music state
         musicXMLContent = ""
+        originalXMLContent = ""
         sheetMusicError = nil
         transposeSteps = 0
+        isShowingModifiedVersion = false
+        isTransitioningSheetMusic = false
+        sheetMusicViewKey = UUID() // Force recreation for new file
 
         Task {
             do {
@@ -303,14 +364,17 @@ struct ContentView: View {
                 // Parse with MusicXMLParser
                 let count = try parser.countBars(in: url)
                 let beats = try parser.countPlayedBeats(in: url, referenceNoteType: selectedNoteType)
+                let modifiedXML = try parser.addExplicitAccidentals(to: url)
 
                 await MainActor.run {
                     // Update parser results
                     barCount = count
                     playedBeats = beats
+                    modifiedXMLWithAccidentals = modifiedXML
                     isProcessing = false
 
                     // Update sheet music content
+                    originalXMLContent = xmlContent
                     musicXMLContent = xmlContent
                 }
             } catch {
@@ -323,6 +387,38 @@ struct ContentView: View {
                     sheetMusicError = "Failed to load MusicXML: \(error.localizedDescription)"
                 }
             }
+        }
+    }
+
+    private func updateSheetMusicWithAccidentals() {
+        guard let modifiedXML = modifiedXMLWithAccidentals else { return }
+
+        // Start transition and force view recreation
+        isTransitioningSheetMusic = true
+        transposeSteps = 0
+        sheetMusicError = nil
+        sheetMusicViewKey = UUID() // Force complete recreation of SheetMusicView
+
+        // Longer delay to ensure the view fully recreates before loading new content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            musicXMLContent = modifiedXML
+            isShowingModifiedVersion = true
+            isTransitioningSheetMusic = false
+        }
+    }
+
+    private func revertToOriginalSheetMusic() {
+        // Start transition and force view recreation
+        isTransitioningSheetMusic = true
+        transposeSteps = 0
+        sheetMusicError = nil
+        sheetMusicViewKey = UUID() // Force complete recreation of SheetMusicView
+
+        // Longer delay to ensure the view fully recreates before loading original content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            musicXMLContent = originalXMLContent
+            isShowingModifiedVersion = false
+            isTransitioningSheetMusic = false
         }
     }
 
@@ -413,6 +509,52 @@ struct OperationResultView: View {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+}
+
+struct XMLViewerSheet: View {
+    let xmlContent: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Modified MusicXML with Explicit Accidentals")
+                        .font(.headline)
+                        .padding(.horizontal)
+
+                    Text("This XML has been processed to include explicit accidental markings for all notes that require them based on the key signature.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+
+                    Text(xmlContent)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                }
+            }
+            .navigationTitle("Modified XML")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(xmlContent, forType: .string)
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 600, minHeight: 400)
     }
 }
 

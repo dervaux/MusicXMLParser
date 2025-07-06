@@ -6,6 +6,7 @@ public enum MusicXMLParseError: Error, LocalizedError {
     case invalidXMLFormat
     case noMeasuresFound
     case xmlParsingFailed(String)
+    case xmlGenerationFailed(String)
     
     public var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ public enum MusicXMLParseError: Error, LocalizedError {
             return "No measures (bars) were found in the MusicXML file."
         case .xmlParsingFailed(let details):
             return "XML parsing failed: \(details)"
+        case .xmlGenerationFailed(let details):
+            return "XML generation failed: \(details)"
         }
     }
 }

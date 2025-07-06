@@ -21,6 +21,9 @@ let parser = MusicXMLParser()
 
 // Count bars
 let barCount = try parser.countBars(in: fileURL or xmlString)
+
+// Add explicit accidentals
+let modifiedXML = try parser.addExplicitAccidentals(to: fileURL or xmlString)
 ```
 
 ## Available Functions
@@ -32,6 +35,9 @@ The functions below accept parameters that can be either a URL (for file-based i
 
 ### Beat Counting
 - `countPlayedBeats(in fileURL: URL, referenceNoteType: NoteType)` - Count played beats (not silences). The beat counting function returns the total number of played beats using the specified note type as a reference. For example, if you use `.quarterNote` as the reference, a whole note will count as 4 beats, a half note as 2 beats, etc. Rests (silences) are excluded from the count
+
+### Accidental Processing
+- `addExplicitAccidentals(to:)` - Add explicit accidentals to all notes based on key signature. Returns a modified MusicXML string where all notes that should have accidentals according to the key signature will have explicit accidental markings added
 
 ## Note Types
 

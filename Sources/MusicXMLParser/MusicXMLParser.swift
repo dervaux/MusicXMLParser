@@ -29,6 +29,7 @@ public struct MusicXMLParser {
 
     private let barCounter = BarCounter()
     private let beatCounter = BeatCounter()
+    private let accidentalProcessor = AccidentalProcessor()
 
     /// Initializes a new MusicXMLParser instance
     public init() {}
@@ -89,5 +90,32 @@ public struct MusicXMLParser {
     /// - Throws: MusicXMLParseError if the XML cannot be parsed
     public func countPlayedBeats(in xmlString: String, referenceNoteType: NoteType) throws -> Double {
         return try beatCounter.countPlayedBeats(in: xmlString, referenceNoteType: referenceNoteType)
+    }
+
+    /// Adds explicit accidentals to all notes based on key signature in a MusicXML file
+    /// - Parameter fileURL: The URL of the MusicXML file to process
+    /// - Returns: Modified MusicXML string with explicit accidentals
+    /// - Throws: MusicXMLParseError if the file cannot be read or parsed
+    public func addExplicitAccidentals(to fileURL: URL) throws -> String {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            throw MusicXMLParseError.fileNotFound
+        }
+
+        let xmlString: String
+        do {
+            xmlString = try String(contentsOf: fileURL, encoding: .utf8)
+        } catch {
+            throw MusicXMLParseError.xmlParsingFailed("Failed to read file: \(error.localizedDescription)")
+        }
+
+        return try addExplicitAccidentals(to: xmlString)
+    }
+
+    /// Adds explicit accidentals to all notes based on key signature in a MusicXML string
+    /// - Parameter xmlString: The MusicXML content as a string
+    /// - Returns: Modified MusicXML string with explicit accidentals
+    /// - Throws: MusicXMLParseError if the XML cannot be parsed
+    public func addExplicitAccidentals(to xmlString: String) throws -> String {
+        return try accidentalProcessor.addExplicitAccidentals(to: xmlString)
     }
 }
