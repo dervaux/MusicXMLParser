@@ -1,0 +1,15 @@
+{
+  "originHash" : "5f03a2cbdd3b638686ccfb9f6657ed913fb4c6990f097e080ed6b130583594d2",
+  "pins" : [
+    {
+      "identity" : "sheetmusicview",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dervaux/SheetMusicView",
+      "state" : {
+        "branch" : "main",
+        "revision" : "b4aa7ca4e3541e433598a98821c2d49b8906273c"
+      }
+    }
+  ],
+  "version" : 3
+}

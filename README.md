@@ -20,14 +20,29 @@ import MusicXMLParser
 let parser = MusicXMLParser()
 
 // Count bars from a file URL
-let barCount = try parser.countBars(in: fileURL)
+let barCount = try parser.countBars(in: fileURL or xmlString)
 
-// Count bars from an XML string
-let barCount = try parser.countBars(in: xmlString)
 ```
 
 ## Available Functions
 
 The functions below accept parameters that can be either a URL (for file-based input) or a String (for direct XML content).
 
+### Bar Counting
 - `countBars` - Count the number of bars
+
+### Beat Counting
+- `countPlayedBeats(in fileURL: URL, referenceNoteType: NoteType)` - Count played beats (not silences). The beat counting function returns the total number of played beats using the specified note type as a reference. For example, if you use `.quarterNote` as the reference, a whole note will count as 4 beats, a half note as 2 beats, etc. Rests (silences) are excluded from the count.
+
+## Note Types
+
+The `NoteType` enum supports the following note types (for example, for beat counting):
+
+- `.wholeNote` - Whole note
+- `.halfNote` - Half note
+- `.quarterNote` - Quarter note
+- `.eighthNote` - Eighth note
+- `.sixteenthNote` - Sixteenth note
+- `.thirtySecondNote` - Thirty-second note
+- `.sixtyFourthNote` - Sixty-fourth note
+
