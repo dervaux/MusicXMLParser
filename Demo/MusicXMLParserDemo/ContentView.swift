@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import SheetMusicView
 
 struct ContentView: View {
     @State private var selectedFileURL: URL?
@@ -17,10 +18,15 @@ struct ContentView: View {
     @State private var errorMessage: String?
     @State private var isProcessing: Bool = false
 
+    // SheetMusicView state
+    @State private var musicXMLContent: String = ""
+    @State private var transposeSteps: Int = 0
+    @State private var sheetMusicError: String?
+
     private let parser = MusicXMLParser()
 
     var body: some View {
-        VStack(spacing: 20) {
+        ScrollView {
             // Header
             VStack(spacing: 8) {
                 Image(systemName: "music.note.list")
@@ -74,6 +80,96 @@ struct ContentView: View {
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
+            }
+
+            // Sheet Music Display Section
+            if selectedFileURL != nil {
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Sheet Music Preview")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        // Transpose controls
+                        HStack(spacing: 8) {
+                            Text("Transpose:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Button("-") {
+                                if transposeSteps > -12 {
+                                    transposeSteps -= 1
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(transposeSteps <= -12)
+
+                            Text("\(transposeSteps)")
+                                .font(.caption)
+                                .frame(width: 20)
+
+                            Button("+") {
+                                if transposeSteps < 12 {
+                                    transposeSteps += 1
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(transposeSteps >= 12)
+
+                            Button("Reset") {
+                                transposeSteps = 0
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(transposeSteps == 0)
+                        }
+                    }
+
+                    // SheetMusicView
+                    if musicXMLContent.isEmpty {
+                        VStack(spacing: 12) {
+                            ProgressView("Loading sheet music...")
+                            Text("Rendering musical notation...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(height: 300)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                    } else if let error = sheetMusicError {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title)
+                                .foregroundColor(.orange)
+                            Text("Sheet Music Error")
+                                .font(.headline)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(height: 300)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                    } else {
+                        SheetMusicView(
+                            xml: $musicXMLContent,
+                            transposeSteps: $transposeSteps,
+                            onError: { error in
+                                sheetMusicError = error.localizedDescription
+                            },
+                            onReady: {
+                                sheetMusicError = nil
+                            }
+                        )
+                        .showTitle()
+                        .showComposer()
+                        .frame(height: 300)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                    }
+                }
             }
 
             // Results Section
@@ -194,20 +290,37 @@ struct ContentView: View {
         errorMessage = nil
         isProcessing = true
 
+        // Reset sheet music state
+        musicXMLContent = ""
+        sheetMusicError = nil
+        transposeSteps = 0
+
         Task {
             do {
+                // Load MusicXML content for SheetMusicView
+                let xmlContent = try String(contentsOf: url, encoding: .utf8)
+
+                // Parse with MusicXMLParser
                 let count = try parser.countBars(in: url)
                 let beats = try parser.countPlayedBeats(in: url, referenceNoteType: selectedNoteType)
 
                 await MainActor.run {
+                    // Update parser results
                     barCount = count
                     playedBeats = beats
                     isProcessing = false
+
+                    // Update sheet music content
+                    musicXMLContent = xmlContent
                 }
             } catch {
+
                 await MainActor.run {
                     errorMessage = error.localizedDescription
                     isProcessing = false
+
+                    // Handle sheet music error
+                    sheetMusicError = "Failed to load MusicXML: \(error.localizedDescription)"
                 }
             }
         }
