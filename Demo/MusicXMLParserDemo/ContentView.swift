@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var selectedFileName: String = "No file selected"
     @State private var barCount: Int?
     @State private var playedBeats: Double?
+    @State private var allBeats: Double?
     @State private var selectedNoteType: NoteType = .quarterNote
     @State private var errorMessage: String?
     @State private var isProcessing: Bool = false
@@ -241,6 +242,15 @@ struct ContentView: View {
                                 isProcessing: isProcessing,
                                 error: errorMessage
                             )
+
+                            OperationResultView(
+                                title: "All Beats",
+                                description: "Total beats including both played notes and silences using \(selectedNoteType.rawValue) note reference",
+                                icon: "metronome.fill",
+                                result: allBeats.map { String(format: "%.1f beats", $0) },
+                                isProcessing: isProcessing,
+                                error: errorMessage
+                            )
                         }
 
                         Divider()
@@ -343,6 +353,7 @@ struct ContentView: View {
         // Reset previous results
         barCount = nil
         playedBeats = nil
+        allBeats = nil
         modifiedXMLWithAccidentals = nil
         errorMessage = nil
         isProcessing = true
@@ -364,12 +375,14 @@ struct ContentView: View {
                 // Parse with MusicXMLParser
                 let count = try parser.countBars(in: url)
                 let beats = try parser.countPlayedBeats(in: url, referenceNoteType: selectedNoteType)
+                let totalBeats = try parser.countAllBeats(in: url, referenceNoteType: selectedNoteType)
                 let modifiedXML = try parser.addExplicitAccidentals(to: url)
 
                 await MainActor.run {
                     // Update parser results
                     barCount = count
                     playedBeats = beats
+                    allBeats = totalBeats
                     modifiedXMLWithAccidentals = modifiedXML
                     isProcessing = false
 

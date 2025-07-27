@@ -92,6 +92,37 @@ public struct MusicXMLParser {
         return try beatCounter.countPlayedBeats(in: xmlString, referenceNoteType: referenceNoteType)
     }
 
+    /// Counts all beats in a MusicXML file, including both played notes and silences
+    /// - Parameters:
+    ///   - fileURL: The URL of the MusicXML file to parse
+    ///   - referenceNoteType: The note type to use as a reference for beat counting
+    /// - Returns: The total number of beats as a Double
+    /// - Throws: MusicXMLParseError if the file cannot be read or parsed
+    public func countAllBeats(in fileURL: URL, referenceNoteType: NoteType) throws -> Double {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            throw MusicXMLParseError.fileNotFound
+        }
+
+        let xmlString: String
+        do {
+            xmlString = try String(contentsOf: fileURL, encoding: .utf8)
+        } catch {
+            throw MusicXMLParseError.xmlParsingFailed("Failed to read file: \(error.localizedDescription)")
+        }
+
+        return try countAllBeats(in: xmlString, referenceNoteType: referenceNoteType)
+    }
+
+    /// Counts all beats in a MusicXML string, including both played notes and silences
+    /// - Parameters:
+    ///   - xmlString: The MusicXML content as a string
+    ///   - referenceNoteType: The note type to use as a reference for beat counting
+    /// - Returns: The total number of beats as a Double
+    /// - Throws: MusicXMLParseError if the XML cannot be parsed
+    public func countAllBeats(in xmlString: String, referenceNoteType: NoteType) throws -> Double {
+        return try beatCounter.countAllBeats(in: xmlString, referenceNoteType: referenceNoteType)
+    }
+
     /// Adds explicit accidentals to all notes based on key signature in a MusicXML file
     /// - Parameter fileURL: The URL of the MusicXML file to process
     /// - Returns: Modified MusicXML string with explicit accidentals
